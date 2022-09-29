@@ -10,9 +10,11 @@ import mc.warp.transmitgenerators.type.WarpPlayer
 import mc.warp.transmitgenerators.type.WarpSound
 import org.bukkit.Location
 import org.bukkit.Material
+import org.bukkit.configuration.file.YamlConfiguration
 import org.bukkit.entity.Player
 import org.bukkit.inventory.ItemStack
 import java.io.*
+import java.nio.charset.Charset
 import java.nio.charset.StandardCharsets
 import java.util.*
 import java.util.stream.Collectors
@@ -22,9 +24,10 @@ import kotlin.collections.HashMap
 class DataStore {
 
     var playerList = HashMap<UUID, WarpPlayer>()
-    var messages = HashMap<String, String>()
+
     var sounds = HashMap<String, WarpSound>()
-    var config = HashMap<String, Object>()
+    lateinit var messages: YamlConfiguration;
+    lateinit var config: YamlConfiguration;
     private var genList = HashMap<String, Generator>()
     private var langFile: File;
     private var soundFile: File;
@@ -37,8 +40,8 @@ class DataStore {
     constructor() {
         dataFolder = TransmitGenerators.getInstance().dataFolder
         genFile = File(dataFolder.absolutePath + "/gens.json")
-        configFile = File(dataFolder.absolutePath + "/config.json")
-        langFile = File(dataFolder.absolutePath + "/lang.json")
+        configFile = File(dataFolder.absolutePath + "/config.yml")
+        langFile = File(dataFolder.absolutePath + "/lang.yml")
         soundFile = File(dataFolder.absolutePath + "/sounds.json")
         playerFolder = File(dataFolder.absolutePath + "/players")
         GSON = GsonBuilder()
@@ -52,33 +55,17 @@ class DataStore {
     }
 
 
-    inline fun <reified T> configGet(element: String): T {
-        var item = config.get(element)
-        if (item !is T) {
-            if (item != null) {
-                throw TypeCastException("Config Element '$element' is not set properly (${item.`class`})")
-            } else {
-                throw NullPointerException("Config Element '$element' is not defined")
-            }
-        }
-        return item
-    }
+
 
     fun DataInitialization() {
         dataFolder.mkdir()
-        if (!genFile.exists()) {
-            genFile.createNewFile()
-            Generator("dirt", ItemStack(Material.DIRT), ItemStack(Material.BROWN_DYE), 1, "stone", 50);
-            Generator("stone", ItemStack(Material.STONE), ItemStack(Material.STONE_BUTTON), 2, "coal", 100);
-            saveGenerators()
-        } else {
-            loadGenerators()
-        }
+
         if (!playerFolder.exists()) {
             playerFolder.mkdir()
         }
         if (!configFile.exists()) {
-            copyResourceFile("config.json", configFile)
+            configFile.createNewFile()
+            copyResourceFile("config.yml", configFile)
         }
         loadConfig()
         var guiFolder = File(dataFolder.absolutePath + "/guis")
@@ -89,15 +76,21 @@ class DataStore {
         }
         if (!langFile.exists()) {
             langFile.createNewFile()
-            baseLang()
-        } else {
-            loadLang()
+            copyResourceFile("lang.yml", langFile)
         }
+        loadLang()
         if (!soundFile.exists()) {
             soundFile.createNewFile()
-            baseSound()
+            copyResourceFile("sounds.json", soundFile)
+        }
+        loadSound()
+        if (!genFile.exists()) {
+            genFile.createNewFile()
+            Generator("dirt", ItemStack(Material.DIRT), ItemStack(Material.BROWN_DYE), 1, "stone", 50);
+            Generator("stone", ItemStack(Material.STONE), ItemStack(Material.STONE_BUTTON), 2, "coal", 100);
+            saveGenerators()
         } else {
-            loadSound()
+            loadGenerators()
         }
     }
 
@@ -181,26 +174,19 @@ class DataStore {
     }
 
 
-    fun baseLang() {
-        copyResourceFile("lang.json", langFile)
-        loadLang()
-    }
     fun loadLang() {
         if (!langFile.exists()) throw NullPointerException("Lang Save File is null")
 
-        var Reader = FileReader(langFile)
-        var type = object : TypeToken<HashMap<String, String>>() {} .type;
-        var result = GSON.fromJson<HashMap<String, String>>(Reader, type)
-        messages = result
+        messages = YamlConfiguration.loadConfiguration(langFile)
     }
     fun loadConfig() {
+
         if (!configFile.exists()) throw NullPointerException("Config file does not exist")
 
-        var Reader = FileReader(configFile)
-        var type = object : TypeToken<HashMap<String, Object>>() {} .type;
-        var result = GSON.fromJson<HashMap<String, Object>>(Reader, type)
-        config = result as HashMap<String, Object>
+        config = YamlConfiguration.loadConfiguration(configFile)
+
     }
+
     fun saveLang() {
         if (!langFile.exists()) {
             langFile.createNewFile()
@@ -213,12 +199,6 @@ class DataStore {
     }
 
 
-    fun baseSound() {
-
-        copyResourceFile("sounds.json", soundFile)
-
-        loadSound()
-    }
     fun loadSound() {
         if (!soundFile.exists()) throw NullPointerException("Sound Save File is null")
 

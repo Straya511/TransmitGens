@@ -8,6 +8,7 @@ import mc.warp.transmitgenerators.utils.Format.sendText
 import mc.warp.transmitgenerators.utils.Messages.getLangMessage
 import mc.warp.transmitgenerators.utils.Messages.playSound
 import mc.warp.transmitgenerators.utils.scheduler.schedule
+import net.kyori.adventure.text.serializer.plain.PlainTextComponentSerializer
 import org.bukkit.Bukkit
 import org.bukkit.command.Command
 import org.bukkit.command.CommandExecutor
@@ -20,111 +21,193 @@ import java.util.*
 
 class GenCommand : CommandExecutor {
     override fun onCommand(sender: CommandSender, command: Command, label: String, args: Array<out String>): Boolean {
-        if (sender !is Player) return false
 
-        var player = sender as Player
 
-        if (!player.hasPermission("transmitgens.command")) {
-            sendText(player, getLangMessage("command.error.permission"))
-            playSound(player, "command.error")
-            return false
+        var player = sender
+
+        if (player is Player) {
+            if (!player.hasPermission("transmitgens.command")) {
+                sendText(player, getLangMessage("command.error.permission"))
+                playSound(player, "command.error")
+                return false
+            }
         }
 
 
         when (args.getOrNull(0)?.lowercase()) {
             "give" -> {
-                if (!player.hasPermission("transmitgens.command.generator.get")) {
-                    sendText(player, getLangMessage("command.error.permission"))
-                    playSound(player, "command.error")
-                    return false
-                }
-                if (args.getOrNull(1) == null) {
-                    sendText(player, getLangMessage("command.error.gen.null"))
-                    playSound(player, "command.error")
-                    return false
-                }
-                var gen = getDataStore().getGenerator(args.get(1));
-                if (gen == null) {
-                    sendText(player, getLangMessage("command.error.gen.existence",args.get(1)))
-                    playSound(player, "command.error")
-                    return false
-                }
-                if (args.getOrNull(2) != null) {
-                    var sendPlayer = Bukkit.getPlayer(args.get(2))
-                    if (sendPlayer != null) {
-                        sendPlayer.inventory.addItem(gen.getBlock())
-                        playSound(player, "command.success")
-                    } else {
-                        sendText(player, getLangMessage("command.error.player.existence",args.get(2)))
+                if (player is Player) {
+                    if (!player.hasPermission("transmitgens.command.generator.get")) {
+                        sendText(player, getLangMessage("command.error.permission"))
                         playSound(player, "command.error")
                         return false
                     }
-                } else {
-                    player.inventory.addItem(gen.getBlock())
-                    playSound(player, "command.success")
-                }
-
-            }
-            "slot", "slots" -> {
-                if (args.getOrNull(1) != null) {
-                    if (args.get(1).equals("add", ignoreCase = true) || args.get(1).equals("remove", ignoreCase = true)) {
-
-                        if (args.getOrNull(2) == null) {
-                            sendText(player, getLangMessage("command.error.usage", "/transmitgens slot (add/remove) <number> <player>"))
-                            playSound(player, "command.error")
-                            return false
-                        }
-                        var num = Integer.parseInt(args.getOrNull(2))
-                        var sendPlayer = player
-
-                        if (args.getOrNull(3) != null) {
-                            var testPlayer = Bukkit.getPlayer(args.get(3))
-                            if (testPlayer != null) {
-                                sendPlayer = testPlayer
-                            }
-                        }
-
-                        var warpPlayer = getDataStore().getPlayer(sendPlayer)!!
-
-                        if (args.get(1).equals("add", ignoreCase = true)) {
-                            warpPlayer.maxGenSlots += num
+                    if (args.getOrNull(1) == null) {
+                        sendText(player, getLangMessage("command.error.gen.null"))
+                        playSound(player, "command.error")
+                        return false
+                    }
+                    var gen = getDataStore().getGenerator(args.get(1));
+                    if (gen == null) {
+                        sendText(player, getLangMessage("command.error.gen.existence", args.get(1)))
+                        playSound(player, "command.error")
+                        return false
+                    }
+                    if (args.getOrNull(2) != null) {
+                        var sendPlayer = Bukkit.getPlayer(args.get(2))
+                        if (sendPlayer != null) {
+                            sendPlayer.inventory.addItem(gen.getBlock())
+                            playSound(player, "command.success")
                         } else {
-                            warpPlayer.maxGenSlots -= num
-                        }
-
-                        getDataStore().setPlayer(sendPlayer, warpPlayer)
-                        return true
-                    } else if (args.get(1).equals("amount", ignoreCase = true)) {
-                        if (args.getOrNull(2) == null) {
-                            sendText(player, getLangMessage("command.error.usage", "/transmitgens slots amount <player>"))
+                            sendText(player, getLangMessage("command.error.player.existence", args.get(2)))
                             playSound(player, "command.error")
                             return false
                         }
-                        var getPlayer = Bukkit.getPlayer(args.get(2))
-                        if (getPlayer == null) {
-                            sendText(player, getLangMessage("command.error.player.existence",args.get(2)))
-                            playSound(player, "command.error")
-                            return false
-                        }
-                        sendText(player, getLangMessage("command.slots.amount",getPlayer.name, getDataStore().getPlayer(getPlayer)!!.maxGenSlots))
-                        return true
+                    } else {
+                        player.inventory.addItem(gen.getBlock())
+                        playSound(player, "command.success")
+                    }
+                } else {
+                    if (args.getOrNull(2) == null) {
+                        TransmitGenerators.getInstance().logger.info("Incorrect Command Usage. /tg give <gen> <player>")
+                        return false
+                    }
+                    var gen = getDataStore().getGenerator(args.get(1));
+                    if (gen == null) {
+                        TransmitGenerators.getInstance().logger.info("That generator does not exist. /tg give <gen> <player>")
+                        return false
+                    }
+                    var sendPlayer = Bukkit.getPlayer(args.get(2))
+                    if (sendPlayer != null) {
+                        sendPlayer.inventory.addItem(gen.getBlock())
+                    } else {
+                        TransmitGenerators.getInstance().logger.info("Player is not online. /tg give <gen> <player>")
+                        return false
                     }
                 }
-
-                sendText(player, getLangMessage("command.error.usage", "/transmitgens slot (add/remove/amount)"))
-                playSound(player, "command.error")
-                return false
-
             }
-            "genlist", "list", "gens" -> {
-                var genList = GenList()
-                genList.show(player)
-            }
-            "reload" -> {
-                if (!player.hasPermission("transmitgens.command.reload")) {
-                    sendText(player, getLangMessage("command.error.permission"))
+            "slot", "slots" -> {
+                if (player is Player) {
+                    if (player is Player) {
+                        if (!player.hasPermission("transmitgens.command.slots")) {
+                            sendText(player, getLangMessage("command.error.permission"))
+                            playSound(player, "command.error")
+                            return false
+                        }
+                    }
+                    if (args.getOrNull(1) != null) {
+                        if (args.get(1).equals("add", ignoreCase = true) || args.get(1)
+                                .equals("remove", ignoreCase = true)
+                        ) {
+
+                            if (args.getOrNull(2) == null) {
+                                sendText(
+                                    player,
+                                    getLangMessage(
+                                        "command.error.usage",
+                                        "/transmitgens slot (add/remove) <number> <player>"
+                                    )
+                                )
+                                playSound(player, "command.error")
+                                return false
+                            }
+                            var num = Integer.parseInt(args.getOrNull(2))
+                            var sendPlayer = player
+
+                            if (args.getOrNull(3) != null) {
+                                var testPlayer = Bukkit.getPlayer(args.get(3))
+                                if (testPlayer != null) {
+                                    sendPlayer = testPlayer
+                                }
+                            }
+
+                            var warpPlayer = getDataStore().getPlayer(sendPlayer)!!
+
+                            if (args.get(1).equals("add", ignoreCase = true)) {
+                                warpPlayer.maxGenSlots += num
+                            } else {
+                                warpPlayer.maxGenSlots -= num
+                            }
+
+                            getDataStore().setPlayer(sendPlayer, warpPlayer)
+                            return true
+                        } else if (args.get(1).equals("amount", ignoreCase = true)) {
+                            if (args.getOrNull(2) == null) {
+                                sendText(
+                                    player,
+                                    getLangMessage("command.error.usage", "/transmitgens slots amount <player>")
+                                )
+                                playSound(player, "command.error")
+                                return false
+                            }
+                            var getPlayer = Bukkit.getPlayer(args.get(2))
+                            if (getPlayer == null) {
+                                sendText(player, getLangMessage("command.error.player.existence", args.get(2)))
+                                playSound(player, "command.error")
+                                return false
+                            }
+                            sendText(
+                                player,
+                                getLangMessage(
+                                    "command.slots.amount",
+                                    getPlayer.name,
+                                    getDataStore().getPlayer(getPlayer)!!.maxGenSlots.toString()
+                                )
+                            )
+                            return true
+                        }
+                    }
+
+                    sendText(player, getLangMessage("command.error.usage", "/transmitgens slot (add/remove/amount)"))
                     playSound(player, "command.error")
                     return false
+                } else {
+                    if (args.getOrNull(1) != null) {
+                        if (args.get(1).equals("add", ignoreCase = true) || args.get(1)
+                                .equals("remove", ignoreCase = true)
+                        ) {
+
+                            if (args.getOrNull(3) == null) {
+                                TransmitGenerators.getInstance().logger.info("Incorrect Usage. /tg slots (add/remove) <number> <player>")
+                                return false
+                            }
+                            var num = Integer.parseInt(args.getOrNull(2))
+
+                            var testPlayer = Bukkit.getPlayer(args.get(3))
+                            if (testPlayer != null) {
+                                    var sendPlayer = testPlayer
+
+                                    var warpPlayer = getDataStore().getPlayer(sendPlayer)!!
+
+                                    if (args.get(1).equals("add", ignoreCase = true)) {
+                                        warpPlayer.maxGenSlots += num
+                                    } else {
+                                        warpPlayer.maxGenSlots -= num
+                                    }
+                            } else {
+                                TransmitGenerators.getInstance().logger.info("Player is not online. /tg give <gen> <player>")
+                                return false
+                            }
+
+
+
+                        }
+                    }
+                }
+            }
+            "genlist", "list", "gens" -> {
+                if (player is Player) {
+                    var genList = GenList()
+                    genList.show(player)
+                }
+            }
+            "reload" -> {
+                if (player is Player) {
+                    if (!player.hasPermission("transmitgens.command.reload")) {
+                        sendText(player, getLangMessage("command.error.permission"))
+                        playSound(player, "command.error")
+                        return false
+                    }
                 }
                 var startTime = System.currentTimeMillis()
 
@@ -135,13 +218,18 @@ class GenCommand : CommandExecutor {
 
                 var diffTime = endTime - startTime
 
-                sendText(player, getLangMessage("command.reload", diffTime))
-                playSound(player, "command.success")
+                if (player is Player) {
+                    sendText(player, getLangMessage("command.reload", diffTime.toString()))
+                    playSound(player, "command.success")
+                }
             }
             else -> {
-                sendText(player, getLangMessage("command.error.existence",args.getOrNull(0) ?: "none"))
-                playSound(player, "command.error")
-                return false
+                if (player is Player) {
+                    sendText(player, getLangMessage("command.error.existence", args.getOrNull(0) ?: "none"))
+                    playSound(player, "command.error")
+                    return false
+                }
+                TransmitGenerators.getInstance().logger.info("Incorrect Usage of command")
             }
 
         }

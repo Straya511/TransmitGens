@@ -25,7 +25,7 @@ class SellCommand : Command {
                 if (it.type == Material.AIR) return@forEach
 
                 var nbtItem = NBTItem(it)
-                var nbtCompound = nbtItem.getCompound("TransmitNBT") ?: return@forEach
+                var nbtCompound = nbtItem.getCompound("custom") ?: return@forEach
 
                 var sell = nbtCompound.getInteger("sellValue")
 
@@ -33,8 +33,8 @@ class SellCommand : Command {
                 if (sell > 0) it.amount = 0
 
             }
-            Format.sendText(player, Messages.getLangMessage("command.sell.success", amount))
-            Format.sendTitle(player,Messages.getLangMessage("command.sell.success.title"),Messages.getLangMessage("command.sell.success.subtitle", amount))
+            Format.sendText(player, Messages.getLangMessage("command.sell.success", amount.toString()))
+            Format.sendTitle(player,Messages.getLangMessage("command.sell.success.title"),Messages.getLangMessage("command.sell.success.subtitle", amount.toString()))
             Messages.playSound(player, "command.success")
 
             TransmitGenerators.econ.depositPlayer(player, amount.toDouble())

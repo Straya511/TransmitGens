@@ -12,7 +12,9 @@ import org.bukkit.Bukkit
 import org.bukkit.command.CommandMap
 import org.bukkit.plugin.java.JavaPlugin
 import java.lang.reflect.Field
-import javax.xml.crypto.Data
+import java.util.*
+import kotlin.Comparator
+import kotlin.collections.ArrayList
 
 
 class TransmitGenerators : JavaPlugin() {
@@ -30,6 +32,7 @@ class TransmitGenerators : JavaPlugin() {
         lateinit var adventure: BukkitAudiences;
         lateinit var econ: Economy;
         var genWait: Int = 0;
+        lateinit var genList: ArrayList<Generator>
     }
 
 
@@ -45,13 +48,13 @@ class TransmitGenerators : JavaPlugin() {
             Placeholders(this).register();
         }
         if (Bukkit.getPluginManager().getPlugin("Vault") == null) {
-            disableDependency("Vault")
+            disableDependency()
             return;
         }
 
         var rsp = server.servicesManager.getRegistration( Economy::class.java )
         if (rsp == null) {
-            disableDependency("Vault")
+            disableDependency()
             return;
         }
         econ = rsp.provider;
@@ -74,7 +77,15 @@ class TransmitGenerators : JavaPlugin() {
 
                 }
             }
-        }, 0, dataStore.configGet<Double>("generator_cooldown").toLong() * 20)
+        }, 0, dataStore.config.getInt("autosave-frequency").toLong() * 20)
+
+        Bukkit.getScheduler().scheduleSyncRepeatingTask(this, {
+            Bukkit.getScheduler().schedule(this) {
+                for (player in Bukkit.getOnlinePlayers()) {
+                    dataStore.savePlayer(player)
+                }
+            }
+        }, 0, (dataStore.config.getInt("generator-cooldown").toLong() * 20) * 60)
 
         var endTime = System.currentTimeMillis()
 
@@ -103,10 +114,20 @@ class TransmitGenerators : JavaPlugin() {
                 dataStore.firstPlayerLoad(player);
             }
         }
-        if (dataStore.configGet<Boolean>("generator_waitPer10")) {
+
+        if (dataStore.config.getBoolean("generator-waitPer10")) {
             genWait = 1
         }
-        var sellEnabled = dataStore.config.getOrElse("sell_command_enabled") { false } as Boolean
+        var generatorList = dataStore.getAllGenerators().values.toMutableList() as ArrayList
+        generatorList.sortBy {
+            it.worth
+        }
+
+        genList = generatorList
+
+
+
+        var sellEnabled = dataStore.config.getBoolean("sell_command_enabled")
         if (sellEnabled) {
             try {
                 val bukkitCommandMap: Field = Bukkit.getServer().javaClass.getDeclaredField("commandMap")
@@ -127,7 +148,7 @@ class TransmitGenerators : JavaPlugin() {
         }
     }
 
-    fun disableDependency(string: String) {
+    fun disableDependency() {
         this.logger.severe("\n" +
                 "\n" +
                 " _____                       _ _      _____                     _               \n" +
@@ -135,7 +156,7 @@ class TransmitGenerators : JavaPlugin() {
                 "  | | |  _| .'|   |_ -|     | |  _|  |  |  | -_|   | -_|  _| .'|  _| . |  _|_ -|\n" +
                 "  |_| |_| |__,|_|_|___|_|_|_|_|_|    |_____|___|_|_|___|_| |__,|_| |___|_| |___|\n" +
                 "\n -" +
-                "\n >>> Plugin cannot be enabled due to missing dependency [ Vault ]" +
+                "\n >>> Plugin cannot be enabled due to missing dependency [ Vault ] or [ Vault Economy Manager ]" +
                 "\n -")
         Bukkit.getPluginManager().disablePlugin(this);
         return

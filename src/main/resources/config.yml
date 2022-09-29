@@ -1,0 +1,10 @@
+config-version: "1.1.0-BETA"
+sell-command: true
+generator-cooldown: 5
+generator-waitPer10: true
+default-getslots: 25
+generator-boilerplate-name: true
+generator-boilerplate-lore: true
+drops-boilerplate-name: true
+drops-boilerplate-lore: true
+autosave-frequency: 5

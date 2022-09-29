@@ -13,6 +13,8 @@ import net.kyori.adventure.text.minimessage.tag.resolver.TagResolver
 import net.kyori.adventure.text.minimessage.tag.standard.StandardTags
 import net.kyori.adventure.title.Title
 import org.bukkit.entity.Player
+import java.text.DecimalFormat
+import java.text.NumberFormat
 import java.time.Duration
 
 
@@ -89,9 +91,18 @@ object Format {
         TransmitGenerators.adventure.player(player).showTitle(title)
     }
 
-
-
-
+    fun formatValue(value: Double): String {
+        var value = value
+        val power: Int
+        val suffix = " kmbtq"
+        var formattedNumber = ""
+        val formatter: NumberFormat = DecimalFormat("#,###.#")
+        power = StrictMath.log10(value).toInt()
+        value = value / Math.pow(10.0, (power / 3 * 3).toDouble())
+        formattedNumber = formatter.format(value)
+        formattedNumber = formattedNumber + suffix[power / 3]
+        return if (formattedNumber.length > 4) formattedNumber.replace("\\.[0-9]+".toRegex(), "") else formattedNumber
+    }
 
 
     fun sendText(player: Player, string: Component?) {

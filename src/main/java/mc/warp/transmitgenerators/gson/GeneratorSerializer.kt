@@ -29,8 +29,8 @@ class GeneratorSerializer  : JsonSerializer<Generator>, JsonDeserializer<Generat
 
 
         var id = json.get("id").asString!!
-        var worth = json.get("sellValue").asInt!!
-        var price = json.get("upgradePrice").asInt!!
+        var worth = json.get("sellValue").asLong!!
+        var price = json.get("upgradePrice").asLong!!
         var upgrade = json.get("upgradeId").asString!!
 
 

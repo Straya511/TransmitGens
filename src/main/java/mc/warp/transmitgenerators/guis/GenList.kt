@@ -2,13 +2,17 @@ package mc.warp.transmitgenerators.guis
 
 import com.github.stefvanschie.inventoryframework.gui.GuiItem
 import com.github.stefvanschie.inventoryframework.gui.type.ChestGui
+import com.github.stefvanschie.inventoryframework.pane.OutlinePane
 import com.github.stefvanschie.inventoryframework.pane.PaginatedPane
+import com.github.stefvanschie.inventoryframework.pane.StaticPane
 import de.tr7zw.nbtapi.NBTContainer
 import de.tr7zw.nbtapi.NBTItem
 import mc.warp.transmitgenerators.TransmitGenerators
 import mc.warp.transmitgenerators.utils.Format
+import mc.warp.transmitgenerators.utils.Format.formatValue
 import mc.warp.transmitgenerators.utils.Messages
 import mc.warp.transmitgenerators.utils.Messages.getLangMessage
+import mc.warp.transmitgenerators.utils.Messages.getLangMessages
 import net.kyori.adventure.text.serializer.gson.GsonComponentSerializer
 import org.bukkit.entity.HumanEntity
 import org.bukkit.entity.Player
@@ -38,49 +42,47 @@ class GenList {
                page = it
 
                this.title = gui.title
-               gui.title = title + " (" + page.page + ") "
+               gui.title = title + " (" + (page.page + 1) + ") "
 
 
                var genNum = 1
 
-               TransmitGenerators.getDataStore().getAllGenerators().forEach {
-                   var key = it.key
-                   var value = it.value
 
-                   var item = value.getBlock()
+               TransmitGenerators.genList.forEach {
+
+                   var item = it.getBlock()
 
                    var meta = item.itemMeta
 
                    var nbtItem = NBTItem(item)
 
                    var display = NBTContainer("{Lore:[]}")
-                   var lore = TransmitGenerators.getDataStore().messages["gui.genlist.generatorLore"]!!
-                   var Objects = arrayListOf<String>(value.worth.toString(), value.upgrade, value.price.toString())
-                   var num = 1
-                   for (replacement in Objects) {
-                       lore = lore.replace("$${num}", replacement, true)
-                       num++
+                   var upgradeName = it.upgrade.split("_")
+                   var upgrade = upgradeName.map {
+                       it.substring(0,1).toUpperCase() + it.substring(1).toLowerCase()
                    }
-                   var loreList = lore.split("\n")
+                   var lore = getLangMessages("gui.genlist.generatorLore",formatValue(it.worth.toDouble()), upgrade.joinToString(" ") ,formatValue(it.price.toDouble()),genNum.toString())
+
                    var NBTlore = display.getStringList("Lore");
-                   var NBTname = display.setString("Name", GsonComponentSerializer.gson().serialize(getLangMessage("gui.genlist.generatorName", value.block.Name, genNum)!!))
-                   loreList.forEach {
-                       NBTlore.add(GsonComponentSerializer.gson().serialize(Format.formater.deserialize(it)))
+
+                   display.setString("Name", GsonComponentSerializer.gson().serialize(getLangMessage("gui.genlist.generatorName", it.block.Name, genNum.toString())!!))
+                   lore.forEach {
+                       NBTlore.add(GsonComponentSerializer.gson().serialize(it))
                    }
                    var realDisplay = nbtItem.addCompound("display")
                    realDisplay.mergeCompound(display)
 
                    item = nbtItem.item
 
-                   genList.add(GuiItem(item))
+                   genList.add(GuiItem(item));
 
                    genNum += 1
+
+
+
                }
 
-
-
-
-               it.populateWithGuiItems(genList);
+               it.populateWithGuiItems(genList)
            }
 
         }
@@ -88,18 +90,18 @@ class GenList {
 
 
     fun goBackClick(event: InventoryClickEvent) {
-        if (page.page > 1) {
+        if ((page.page + 1) > 1) {
             page.page -= 1
-            gui.title = title + " (" + page.page + ") "
+            gui.title = title + " (" + (page.page + 1) + ") "
             gui.update()
         } else {
             Messages.playSound(event.whoClicked as Player, "command.error")
         }
     }
     fun nextPageClick(event: InventoryClickEvent) {
-        if (page.pages < page.page) {
+        if (page.page < page.pages) {
             page.page = page.page + 1
-            gui.title = title + " (" + page.page + ") "
+            gui.title = title + " (" + (page.page + 1) + ") "
             gui.update()
         } else {
             Messages.playSound(event.whoClicked as Player, "command.error")
