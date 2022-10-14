@@ -77,7 +77,7 @@ class TransmitGenerators : JavaPlugin() {
 
                 }
             }
-        }, 0, dataStore.config.getInt("autosave-frequency").toLong() * 20)
+        }, 0, dataStore.config.getInt("generator-cooldown").toLong() * 20)
 
         Bukkit.getScheduler().scheduleSyncRepeatingTask(this, {
             Bukkit.getScheduler().schedule(this) {
@@ -85,7 +85,7 @@ class TransmitGenerators : JavaPlugin() {
                     dataStore.savePlayer(player)
                 }
             }
-        }, 0, (dataStore.config.getInt("generator-cooldown").toLong() * 20) * 60)
+        }, 0, (dataStore.config.getInt("autosave-frequency").toLong() * 20) * 60)
 
         var endTime = System.currentTimeMillis()
 
